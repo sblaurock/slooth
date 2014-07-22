@@ -1,0 +1,25 @@
+{
+  "name": "slooth",
+  "version": "0.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/sblaurock/slooth.git"
+  },
+  "author": "@sblaurock",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/sblaurock/slooth/issues"
+  },
+  "homepage": "https://github.com/sblaurock/slooth",
+  "dependencies": {
+    "express": "~3.4.7"
+  },
+  "engines": {
+    "node": "0.10.x"
+  }
+}
