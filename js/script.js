@@ -124,7 +124,7 @@
     var buffer = null;
 
     return {
-      // Split buffer into chunks.
+      // Split buffer into chunks to be sent to subscriber.
       split: function(buffer) {
         var chunks = [];
         var length = buffer.byteLength;
@@ -146,7 +146,7 @@
         return chunks;
       },
 
-      // Append chunks into buffer.
+      // Append chunks into buffer to be decoded by subscriber.
       append: function(chunk) {
         if(!chunksLoaded) {
           buffer = chunk;
@@ -171,36 +171,37 @@
 
   // Defines functionality around audio playback.
   var audio = function() {
-    var queue = [];
+    var buffer = null;
     var position = 0;
     var context = new AudioContext();
-    var source = context.createBufferSource();
+    var source = null;
 
     return {
-      append: function(chunk, callback) {
-        context.decodeAudioData(chunk, function(buffer) {
-          queue.push(buffer);
+      // Decode aggregated data buffer and set new audio buffer.
+      set: function(callback) {
+        context.decodeAudioData(data.getBuffer(), function(decoded) {
+          buffer = decoded;
 
           if(typeof callback === 'function') {
             callback();
           }
         });
       },
+
+      // Play audio buffer and syncronize time (thanks to: http://goo.gl/uY0tDF).
       play: function() {
-        if(queue.length && queue[position]) {
-          source.disconnect(0);
+        var scheduledTime = 0.015;
+        var currentTime = 0;
 
-          source = context.createBufferSource();
-          source.buffer = queue[position];
+        try {
+          source.stop(scheduledTime);
+        } catch (e) {}
 
-          source.connect(context.destination);
-          source.start(0);
-
-          source.onended = function() {
-            position++;
-            audio.play();
-          };
-        }
+        source = context.createBufferSource();
+        source.buffer = buffer;
+        source.connect(context.destination);
+        currentTime = context.currentTime + 0.010 || 0;
+        source.start(scheduledTime - 0.005, currentTime, buffer.duration - currentTime);
       }
     };
   }();
@@ -216,12 +217,9 @@
 
       subscriber.connect(id, function() {
         subscriber.listen(function(chunk) {
-          audio.append(chunk, function() {
-            if(!chunksReceived) {
-              audio.play();
-            }
-
-            chunksReceived++;
+          data.append(chunk);
+          audio.set(function() {
+            audio.play();
           });
         });
       });
