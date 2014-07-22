@@ -4,11 +4,15 @@
 
 (function($) {
   var _options = {
-    key: '4u478wggtkxzuxr',
+    checkUnsupported: true,
+    key: 'aore8874ym0a4i',
     supported: [
       'Chrome',
       'Firefox'
     ],
+    data: {
+      chunkSize: 51200
+    }
   };
 
   // Holds references to DOM elements this script accesses.
@@ -30,7 +34,7 @@
   };
 
   // Proceed no further if the user is not using an unsupported browser.
-  if(!_tools.isSupported()) {
+  if(_options.checkUnsupported && !_tools.isSupported()) {
     console.error(_messages.unsupportedBrowser);
 
     return;
@@ -114,27 +118,111 @@
     };
   }();
 
+  // Defines data manipulation functionality.
+  var data = function() {
+    var chunksLoaded = 0;
+    var buffer = null;
+
+    return {
+      // Split buffer into chunks.
+      split: function(buffer) {
+        var chunks = [];
+        var length = buffer.byteLength;
+        var current = 0;
+        var end = 0;
+
+        while(current < length) {
+          end = current + _options.data.chunkSize;
+
+          if(end > length) {
+            end = length;
+          }
+
+          chunks.push(buffer.slice(current, end));
+
+          current = end;
+        }
+
+        return chunks;
+      },
+
+      // Append chunks into buffer.
+      append: function(chunk) {
+        if(!chunksLoaded) {
+          buffer = chunk;
+        } else {
+          var temp = new Uint8Array(buffer.byteLength + chunk.byteLength);
+
+          temp.set(new Uint8Array(buffer), 0);
+          temp.set(new Uint8Array(chunk), buffer.byteLength);
+
+          buffer = temp.buffer;
+        }
+
+        chunksLoaded++;
+      },
+
+      // Return current buffer.
+      getBuffer: function() {
+        return buffer;
+      }
+    };
+  }();
+
+  // Defines functionality around audio playback.
+  var audio = function() {
+    var queue = [];
+    var position = 0;
+    var context = new AudioContext();
+    var source = context.createBufferSource();
+
+    return {
+      append: function(chunk, callback) {
+        context.decodeAudioData(chunk, function(buffer) {
+          queue.push(buffer);
+
+          if(typeof callback === 'function') {
+            callback();
+          }
+        });
+      },
+      play: function() {
+        if(queue.length && queue[position]) {
+          source.disconnect(0);
+
+          source = context.createBufferSource();
+          source.buffer = queue[position];
+
+          source.connect(context.destination);
+          source.start(0);
+
+          source.onended = function() {
+            position++;
+            audio.play();
+          };
+        }
+      }
+    };
+  }();
+
   session.create(function(peer) {
     console.log(peer.id);
 
     if(window.location.hash) {
       var id = window.location.hash.replace('#', '');
+      var chunksReceived = 0;
 
       _elements.input.hide();
 
       subscriber.connect(id, function() {
-        subscriber.listen(function(data) {
-          if(typeof data === 'object') {
-            var context = new AudioContext();
+        subscriber.listen(function(chunk) {
+          audio.append(chunk, function() {
+            if(!chunksReceived) {
+              audio.play();
+            }
 
-            context.decodeAudioData(data, function(buffer) {
-              var source = context.createBufferSource();
-
-              source.buffer = buffer;
-              source.connect(context.destination);
-              source.start(0);
-            });
-          }
+            chunksReceived++;
+          });
         });
       });
     } else {
@@ -157,9 +245,11 @@
       var reader = new FileReader();
 
       reader.onload = (function(e) {
-        var buffer = e.target.result;
+        var chunks = data.split(e.target.result);
 
-        host.send(buffer);
+        chunks.forEach(function(chunk) {
+          host.send(chunk);
+        });
       });
 
       reader.readAsArrayBuffer(file);
