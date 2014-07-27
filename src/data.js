@@ -44,10 +44,7 @@ define(function() {
       }
 
       chunksLoaded++;
-    },
 
-    // Return current buffer.
-    getBuffer: function() {
       return buffer;
     }
   };

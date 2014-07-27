@@ -64,16 +64,12 @@
 
       if(window.location.hash) {
         var id = window.location.hash.replace('#', '');
-        var chunksReceived = 0;
 
         elements.input.hide();
 
         Subscriber.connect(id, function() {
           Subscriber.listen(function(chunk) {
-            Data.append(chunk);
-            Audio.set(function() {
-              Audio.play();
-            });
+            Audio.play(Data.append(chunk));
           });
         });
       } else {
@@ -89,7 +85,6 @@
 
         if(!file || !file.type.match(/audio[.]*/)) {
           console.error(messages.unsupportedFiletype);
-
           return;
         }
 
@@ -98,13 +93,13 @@
         reader.onload = (function(e) {
           var chunks = Data.split(e.target.result);
 
-          chunks.forEach(function(chunk) {
-            Host.send(chunk);
+          Audio.decode(e.target.result, function(decoded) {
+            Host.schedule(decoded, chunks);
           });
         });
 
         reader.readAsArrayBuffer(file);
-        Audio.decode(file, function(tags) {
+        Audio.tags(file, function(tags) {
           console.log(tags);
         });
       });
