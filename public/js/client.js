@@ -99,9 +99,6 @@
         });
 
         reader.readAsArrayBuffer(file);
-        Audio.tags(file, function(tags) {
-          console.log(tags);
-        });
       });
     });
   };

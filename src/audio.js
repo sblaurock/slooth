@@ -71,9 +71,9 @@ define(function() {
     time: function() {
       if(!timer) {
         timer = context.createBufferSource();
-      } else {
-        return context.currentTime;
       }
+
+      return context.currentTime;
     }
   };
 });

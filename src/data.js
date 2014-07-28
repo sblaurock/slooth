@@ -1,7 +1,7 @@
 // Defines data manipulation functionality.
 define(function() {
   var options = {
-    chunkSize: 51200
+    chunkSize: 262144
   };
 
   var chunksLoaded = 0;
